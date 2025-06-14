@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"database/sql"
 	"fmt"
 	"log"
@@ -18,6 +19,7 @@ type task struct {
 	info        string
 	status      bool
 	createdTime int
+	updated_at  int
 }
 
 func main() {
@@ -41,31 +43,79 @@ func main() {
 	}
 
 	fmt.Println("Hello! Here's your tasks:")
-	printing()
-
+	//printing()
+	//add()
+	changeStatus()
+	//delete()
 }
 
 // Добавление новой задачи
 func add() {
+	fmt.Println("Введите информацию для добавления задачи:")
+	table := os.Getenv("DB_TABLE")
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	info := scanner.Text()
+	if len(info) < 3 {
+		fmt.Println("Введите корректную задачу")
+		return
+	}
 
+	query := fmt.Sprintf("INSERT INTO %s(info) VALUES ($1)", table)
+	_, err := db.Exec(query, info)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Задача успешно добавлена")
 }
 
 // Изменение статуса задачи
 func changeStatus() {
+	var id int
+	fmt.Print("Введите ID задачи для изменения статуса: ")
+	_, err := fmt.Scan(&id)
+	if err != nil {
+		fmt.Println("Ошибка ввода:", err)
+		return
+	}
 
+	// Обновляем статус на противоположный и обновляем время
+	result, err := db.Exec(`
+        UPDATE list 
+        SET status = NOT status, 
+            updated_at = CURRENT_TIMESTAMP 
+        WHERE id = $1`,
+		id)
+	if err != nil {
+		fmt.Println("Ошибка при обновлении статуса:", err)
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		fmt.Printf("Задача с ID %d не найдена\n", id)
+		return
+	}
+
+	fmt.Printf("Статус задачи с ID %d успешно изменен\n", id)
 }
 
 // Удаление задачи
 func delete() {
-
+	fmt.Println("Введите ID задачи для удаления:")
+	var id int
+	table := os.Getenv("DB_TABLE")
+	fmt.Scan(&id)
+	delete := fmt.Sprintf("DELETE FROM %s WHERE id = $1", table)
+	_, err := db.Exec(delete, id)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 // Вывод всех задач на экран
 func printing() {
-	initDB()
-	defer db.Close()
-
-	print, err := db.Exec("insert * from list")
+	print, err := db.Exec("SELECT id, info, status, created_at, updated_at FROM list")
 	if err != nil {
 		fmt.Println("Не удалось записать данные в таблицу БД, попробуйте заново")
 	}
