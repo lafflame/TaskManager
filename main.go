@@ -7,7 +7,10 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
+	"github.com/alexeyco/simpletable"
+	"github.com/fatih/color"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
@@ -18,8 +21,8 @@ type task struct {
 	id          int
 	info        string
 	status      bool
-	createdTime int
-	updated_at  int
+	createdTime time.Time
+	updated_at  time.Time
 }
 
 func main() {
@@ -56,8 +59,6 @@ func main() {
 			changeStatus()
 		case "printing":
 			printing()
-		default:
-			fmt.Println("Неправильный ввод")
 		}
 
 	}
@@ -131,11 +132,88 @@ func delete() {
 
 // Вывод всех задач на экран
 func printing() {
-	print, err := db.Exec("SELECT id, info, status, created_at, updated_at FROM list")
-	if err != nil {
-		fmt.Println("Не удалось записать данные в таблицу БД, попробуйте заново")
+	doneColor := color.New(color.FgGreen).SprintFunc()
+	pendingColor := color.New(color.FgRed).SprintFunc()
+	headerColor := color.New(color.FgCyan, color.Bold).SprintFunc()
+	//footerColor := color.New(color.FgYellow).SprintFunc()
+
+	// Создаем таблицу
+	table := simpletable.New()
+
+	// Устанавливаем заголовки
+	table.Header = &simpletable.Header{
+		Cells: []*simpletable.Cell{
+			{Align: simpletable.AlignCenter, Text: headerColor("ID")},
+			{Align: simpletable.AlignCenter, Text: headerColor("Task")},
+			{Align: simpletable.AlignCenter, Text: headerColor("Done?")},
+			{Align: simpletable.AlignCenter, Text: headerColor("Created At")},
+			{Align: simpletable.AlignCenter, Text: headerColor("Updated At")},
+		},
 	}
-	fmt.Println(print)
+
+	// Получаем данные из БД
+	rows, err := db.Query("SELECT id, info, status, created_at, updated_at FROM list ORDER BY id")
+	if err != nil {
+		log.Fatal("Ошибка при выполнении запроса:", err)
+	}
+	defer rows.Close()
+
+	var remainTasks int
+
+	// Обрабатываем результаты
+	for rows.Next() {
+		var (
+			id        int
+			info      string
+			status    bool
+			createdAt time.Time
+			updatedAt sql.NullTime
+		)
+
+		if err := rows.Scan(&id, &info, &status, &createdAt, &updatedAt); err != nil {
+			log.Fatal("Ошибка при сканировании данных:", err)
+		}
+
+		if !status {
+			remainTasks++
+		}
+
+		statusStr := pendingColor("✗")
+		if status {
+			statusStr = doneColor("✓")
+		}
+
+		updatedAtStr := "—"
+		if updatedAt.Valid {
+			updatedAtStr = updatedAt.Time.Format("2006-01-02 15:04:05")
+		}
+
+		table.Body.Cells = append(table.Body.Cells, []*simpletable.Cell{
+			{Text: headerColor(id)},
+			{Text: info},
+			{Align: simpletable.AlignCenter, Text: statusStr},
+			{Text: createdAt.Format("2006-01-02 15:04:05")},
+			{Text: updatedAtStr},
+		})
+	}
+
+	// Проверяем ошибки после итерации
+	if err = rows.Err(); err != nil {
+		log.Fatal("Ошибка при чтении строк:", err)
+	}
+
+	// Добавляем футер с статистикой
+	table.Footer = &simpletable.Footer{
+		Cells: []*simpletable.Cell{
+			{Span: 5, Align: simpletable.AlignCenter, Text: fmt.Sprintf(
+				"Remain tasks: %d",
+				remainTasks,
+			)},
+		},
+	}
+
+	// Выводим таблицу
+	table.Println()
 }
 
 func initDB() (*sql.DB, error) {
