@@ -1,3 +1,5 @@
+//TODO Надо сделать постоянный ввод без выбора, т.е. пользователь вводит команды сам, а не выбирает цифры
+
 package main
 
 import (
@@ -42,11 +44,26 @@ func main() {
 		log.Fatalf("Не удалось проверить соединение с БД: %v", err)
 	}
 
-	fmt.Println("Hello! Here's your tasks:")
-	//printing()
-	//add()
-	changeStatus()
-	//delete()
+	//TODO
+	for {
+		scanner := bufio.NewScanner(os.Stdin)
+		scanner.Scan()
+		choice := scanner.Text()
+		switch choice {
+		case "delete":
+			delete()
+		case "add":
+			add()
+		case "change status":
+			changeStatus()
+		case "printing":
+			printing()
+		default:
+			fmt.Println("Неправильный ввод")
+		}
+
+	}
+
 }
 
 // Добавление новой задачи
@@ -103,9 +120,10 @@ func changeStatus() {
 // Удаление задачи
 func delete() {
 	fmt.Println("Введите ID задачи для удаления:")
-	var id int
 	table := os.Getenv("DB_TABLE")
-	fmt.Scan(&id)
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	id := scanner.Text()
 	delete := fmt.Sprintf("DELETE FROM %s WHERE id = $1", table)
 	_, err := db.Exec(delete, id)
 	if err != nil {
