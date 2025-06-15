@@ -12,11 +12,11 @@
 
 ## Установка и настройка
 
-1. Убедитесь, что у вас установлен Go (версии 1.16 или выше)
+1. Убедитесь, что у вас установлен Go
 2. Установите PostgreSQL и создайте базу данных для приложения
 3. Клонируйте репозиторий:
    ```bash
-   git clone https://github.com/yourusername/task-manager-cli.git
+   git clone https://github.com/lafflame/TaskManager.git
    cd task-manager-cli
    ```
 4. Установите зависимости:
