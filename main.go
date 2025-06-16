@@ -42,31 +42,27 @@ func main() {
 		fmt.Print("\n> ")
 		scanner := bufio.NewScanner(os.Stdin)
 		scanner.Scan()
-		choice := scanner.Text()
-		choice = strings.ToLower(choice) //Вызывается функция вне зависимости от регистра
-		switch choice {
+		choice := strings.Fields(scanner.Text())
+		//choice = strings.ToLower(choice) //Вызывается функция вне зависимости от регистра
+
+		if len(choice) < 2 {
+			fmt.Print("Input more words. For example: delete 3; add wash the dishes\n")
+		}
+		switch choice[0] {
 		case "delete":
-			delete()
+			delete(choice[1])
 		case "add":
-			add()
+			add(choice[1])
 		case "change status":
-			changeStatus()
+			id, _ := strconv.Atoi(choice[1]) //НЕ РАБОТАЕТ
+			changeStatus(id)
 		}
 	}
 }
 
 // Добавление новой задачи
-func add() {
-	fmt.Println("Введите информацию для добавления задачи:")
+func add(info string) {
 	table := os.Getenv("DB_TABLE")
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Scan()
-	info := scanner.Text()
-	if len(info) < 3 {
-		fmt.Println("Введите корректную задачу")
-		return
-	}
-
 	query := fmt.Sprintf("INSERT INTO %s(info) VALUES ($1)", table)
 	_, err := db.Exec(query, info)
 	if err != nil {
@@ -76,15 +72,7 @@ func add() {
 }
 
 // Изменение статуса задачи
-func changeStatus() {
-	var id int
-	fmt.Print("Введите ID задачи для изменения статуса: ")
-	_, err := fmt.Scan(&id)
-	if err != nil {
-		fmt.Println("Ошибка ввода:", err)
-		return
-	}
-
+func changeStatus(id int) {
 	result, err := db.Exec(`
         UPDATE list 
         SET status = NOT status, 
@@ -106,12 +94,8 @@ func changeStatus() {
 }
 
 // Удаление задачи
-func delete() {
-	fmt.Println("Введите ID задачи для удаления:")
+func delete(id string) {
 	table := os.Getenv("DB_TABLE")
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Scan()
-	id := scanner.Text()
 	delete := fmt.Sprintf("DELETE FROM %s WHERE id = $1", table)
 	_, err := db.Exec(delete, id)
 	if err != nil {
