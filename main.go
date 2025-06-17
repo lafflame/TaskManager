@@ -37,25 +37,48 @@ func main() {
 		log.Fatalf("Не удалось проверить соединение с БД: %v", err)
 	}
 
+	fmt.Println("\nUse 'help' to get all commands")
+	print()
 	for {
-		print()
 		fmt.Print("\n> ")
 		scanner := bufio.NewScanner(os.Stdin)
 		scanner.Scan()
 		choice := strings.Fields(scanner.Text())
-		//choice = strings.ToLower(choice) //Вызывается функция вне зависимости от регистра
-
-		if len(choice) < 2 {
-			fmt.Print("Input more words. For example: delete 3; add wash the dishes\n")
-		}
-		switch choice[0] {
+		switch strings.ToLower(choice[0]) {
 		case "delete":
+			if len(choice) < 2 {
+				fmt.Println("Error: Please specify task ID. Example: delete 3")
+				continue
+			}
 			delete(choice[1])
+			print()
 		case "add":
-			add(choice[1])
-		case "change status":
-			id, _ := strconv.Atoi(choice[1]) //НЕ РАБОТАЕТ
+			if len(choice) < 2 {
+				fmt.Println("Error: Please enter task description. Example: add Buy milk")
+				continue
+			}
+			add(strings.Join(choice[1:], " "))
+			print()
+		case "update":
+			if len(choice) < 2 {
+				fmt.Println("Error: Please specify task ID. Example: status 3")
+				continue
+			}
+			id, _ := strconv.Atoi(choice[1])
 			changeStatus(id)
+			print()
+		case "help":
+			fmt.Println(`Available commands:
+- add <task>      Add new task
+- delete <id>     Delete task
+- update <id>     Toggle task status
+- help            Show this help
+- quit            Exit program`)
+		case "quit":
+			fmt.Println("Bye!")
+			return
+		default:
+			fmt.Print("Unknown command. Use 'help' to find available commands")
 		}
 	}
 }
@@ -201,4 +224,12 @@ func initDB() (*sql.DB, error) {
 		host, p, user, dbname, sslmode)
 
 	return sql.Open("postgres", connStr)
+}
+
+func resetSequence() error {
+	_, err := db.Exec("ALTER SEQUENCE list_id_seq RESTART WITH 1")
+	if err != nil {
+		return fmt.Errorf("error resetting sequence: %v", err)
+	}
+	return nil
 }
